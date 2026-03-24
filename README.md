@@ -1,50 +1,45 @@
 # IND-AI
 
-A test version of a **memory-powered coding chatbot** that can:
+A **simple AI coding assistant** you can run from the terminal.
 
-- save earlier tasks and solutions,
-- remember and retrieve relevant prior work,
-- keep chat history for upcoming prompts,
-- optionally use an OpenAI-compatible chat API backend.
+It supports:
+- one-shot coding questions,
+- interactive chat mode,
+- optional OpenAI-compatible `/chat/completions` API usage,
+- local fallback guidance when no API key is available.
 
 ## Quick start
 
-### 1) Save and search memories
+### 1) Ask one coding question
 
 ```bash
-python ind_ai_memory_agent.py add --task "Build login" --solution "Use JWT + refresh token" --tags auth python
-python ind_ai_memory_agent.py search --prompt "I need auth"
-python ind_ai_memory_agent.py list
+python ind_ai_memory_agent.py "How do I parse JSON in Python?"
 ```
 
-### 2) Run full chatbot (interactive)
+### 2) Run interactive mode
 
 ```bash
-python ind_ai_memory_agent.py chat
+python ind_ai_memory_agent.py --chat
 ```
-
-Chat commands:
-
-- `/remember <task> => <solution>` save a solved pattern during chat
-- `/exit` quit chat
 
 ## Optional API integration
 
-If `OPENAI_API_KEY` is set, the bot will call an OpenAI-compatible
-`/chat/completions` endpoint and inject memory context automatically.
+Set your key as an environment variable (recommended):
 
 ```bash
 export OPENAI_API_KEY="your_key_here"
 export OPENAI_MODEL="gpt-4o-mini"
 # optional, defaults to https://api.openai.com/v1
 export OPENAI_BASE_URL="https://api.openai.com/v1"
-python ind_ai_memory_agent.py chat
 ```
 
-## Files created at runtime
+Or pass it directly:
 
-- `memory_store.json` → persistent memory entries
-- `session_history.json` → conversation history
+```bash
+python ind_ai_memory_agent.py --api-key "your_key_here" "Help me write a REST endpoint"
+```
+
+If no API response is available, IND-AI returns a local coding workflow fallback.
 
 ## Run tests
 
