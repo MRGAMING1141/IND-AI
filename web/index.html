@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>IND-AI Web Chat</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main class="layout">
+      <section class="panel">
+        <h1>IND-AI Chat</h1>
+        <p class="sub">Memory-powered coding assistant</p>
+
+        <div id="chat-log" class="chat-log"></div>
+
+        <form id="chat-form" class="row">
+          <input id="message" type="text" placeholder="Ask a coding question..." required />
+          <button type="submit">Send</button>
+        </form>
+      </section>
+
+      <section class="panel">
+        <h2>Save Memory</h2>
+        <form id="memory-form" class="stack">
+          <input id="task" type="text" placeholder="Task" required />
+          <textarea id="solution" placeholder="Solution" required></textarea>
+          <input id="tags" type="text" placeholder="Tags (comma-separated)" />
+          <button type="submit">Save</button>
+        </form>
+
+        <h2>Saved Memories</h2>
+        <button id="refresh">Refresh List</button>
+        <ul id="memories" class="memories"></ul>
+      </section>
+    </main>
+
+    <script src="/app.js"></script>
+  </body>
+</html>
