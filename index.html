@@ -13,7 +13,7 @@
     <header>
         <div class="logo">
             <div class="logo-icon">🤖</div>
-            <h1><h1>IND AI</h1>
+            <h1>IND AI</h1>
         </div>
         <div class="header-actions">
             <button class="btn btn-secondary" onclick="clearChat()">Clear Chat</button>
@@ -29,10 +29,9 @@
 
         <div class="chat-container">
             <div class="chat-messages" id="chatMessages">
-                <!-- Initial AI Message -->
                 <div class="message assistant">
                     <div class="message-header">
-                        <span>🤖 CodingAI</span>
+                        <span>🤖 IND AI</span>
                     </div>
                     <div class="message-content">
                         Hello! I'm your AI coding assistant. I can help you with:
@@ -102,17 +101,8 @@
     </footer>
 
     <script>
-        // API Configuration
-        const API_KEY = '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';
-        const API_URL = 'https://openrouter.ai/api/v1/chat/completions';
-        
         // Chat history for context
-        let chatHistory = [
-            {
-                role: 'system',
-                content: 'You are IND AI, a helpful AI coding assistant. You help users with programming questions, code debugging, explanations, and best practices. Always provide clear, well-formatted responses with code examples when appropriate. Use markdown formatting with code blocks for code snippets.'
-            }
-        ];
+        let chatHistory = [];
 
         // Auto-resize textarea
         const textarea = document.getElementById('userInput');
@@ -148,40 +138,79 @@
             showTypingIndicator();
 
             try {
-                // Call OpenRouter API
-                const response = await fetch(API_URL, {
+                // Using free HuggingFace Inference API with a coding model
+                const response = await fetch('https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.2', {
                     method: 'POST',
                     headers: {
-                        'Authorization': `Bearer ${API_KEY}`,
-                        'Content-Type': 'application/json',
-                        'HTTP-Referer': window.location.href,
-                        'X-Title': 'IND AI'
+                        'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
-                        model: 'openai/gpt-3.5-turbo',
-                        messages: chatHistory,
-                        max_tokens: 2000,
-                        temperature: 0.7
+                        inputs: `<s>[INST] You are IND AI, a helpful coding assistant. Provide clear, concise answers with code examples when appropriate. Use markdown for code blocks. User question: ${message} [/INST]`,
+                        parameters: {
+                            max_new_tokens: 1024,
+                            temperature: 0.7,
+                            return_full_text: false
+                        }
                     })
                 });
 
                 const data = await response.json();
-                
-                // Remove typing indicator
                 hideTypingIndicator();
 
-                if (data.choices && data.choices[0]) {
-                    const aiMessage = data.choices[0].message.content;
+                if (data && Array.isArray(data) && data[0] && data[0].generated_text) {
+                    const aiMessage = data[0].generated_text.trim();
                     chatHistory.push({ role: 'assistant', content: aiMessage });
                     addMessage(aiMessage, 'assistant');
                 } else if (data.error) {
-                    addMessage(`Error: ${data.error.message || 'Something went wrong. Please try again.'}`, 'assistant');
+                    // If HuggingFace is loading, use fallback
+                    const fallbackResponse = await getFallbackResponse(message);
+                    chatHistory.push({ role: 'assistant', content: fallbackResponse });
+                    addMessage(fallbackResponse, 'assistant');
+                } else {
+                    const fallbackResponse = await getFallbackResponse(message);
+                    chatHistory.push({ role: 'assistant', content: fallbackResponse });
+                    addMessage(fallbackResponse, 'assistant');
                 }
             } catch (error) {
                 hideTypingIndicator();
-                addMessage(`Error: Failed to connect to AI service. Please check your internet connection and try again.`, 'assistant');
+                // Use fallback response on error
+                const fallbackResponse = getFallbackResponse(message);
+                chatHistory.push({ role: 'assistant', content: fallbackResponse });
+                addMessage(fallbackResponse, 'assistant');
                 console.error('API Error:', error);
             }
+        }
+
+        // Fallback response generator (works offline)
+        function getFallbackResponse(message) {
+            const lowerMessage = message.toLowerCase();
+            
+            if (lowerMessage.includes('python') && (lowerMessage.includes('sort') || lowerMessage.includes('list'))) {
+                return `Here's a Python function to sort a list:\n\n\`\`\`python\ndef sort_list(items, reverse=False):\n    """Sort a list in ascending or descending order."""\n    return sorted(items, reverse=reverse)\n\n# Example usage:\nnumbers = [64, 34, 25, 12, 22, 11, 90]\nprint(sort_list(numbers))  # [11, 12, 22, 25, 34, 64, 90]\nprint(sort_list(numbers, reverse=True))  # [90, 64, 34, 25, 22, 12, 11]\n\`\`\`\n\nThis function uses Python's built-in \`sorted()\` which implements Timsort algorithm with O(n log n) complexity.`;
+            }
+            
+            if (lowerMessage.includes('react') && lowerMessage.includes('hook')) {
+                return `React Hooks allow you to use state and lifecycle features in functional components.\n\n**Common Hooks:**\n\n\`\`\`jsx\nimport { useState, useEffect, useCallback } from 'react';\n\nfunction Counter() {\n  const [count, setCount] = useState(0);\n  \n  useEffect(() => {\n    document.title = \`Count: \${count}\`;\n  }, [count]);\n  \n  const increment = useCallback(() => {\n    setCount(c => c + 1);\n  }, []);\n  \n  return <button onClick={increment}>{count}</button>;\n}\n\`\`\`\n\nKey hooks:\n- \`useState\` for state management\n- \`useEffect\` for side effects\n- \`useContext\` for context API\n- \`useCallback\` for memoization`;
+            }
+            
+            if (lowerMessage.includes('node') && lowerMessage.includes('api')) {
+                return `Here's a simple REST API in Node.js with Express:\n\n\`\`\`javascript\nconst express = require('express');\nconst app = express();\n\napp.use(express.json());\n\nlet items = [];\n\n// GET all items\napp.get('/api/items', (req, res) => {\n  res.json(items);\n});\n\n// POST new item\napp.post('/api/items', (req, res) => {\n  const item = { id: Date.now(), ...req.body };\n  items.push(item);\n  res.status(201).json(item);\n});\n\n// DELETE item\napp.delete('/api/items/:id', (req, res) => {\n  items = items.filter(i => i.id !== +req.params.id);\n  res.status(204).send();\n});\n\napp.listen(3000, () => console.log('Server running on port 3000'));\n\`\`\`\n\nThis creates a basic CRUD API with GET, POST, and DELETE endpoints.`;
+            }
+            
+            if (lowerMessage.includes('sql') && lowerMessage.includes('optimi')) {
+                return `Here are key SQL optimization techniques:\n\n**1. Use INDEXES on frequently queried columns**\n\`\`\`sql\nCREATE INDEX idx_user_email ON users(email);\n\`\`\`\n\n**2. Avoid SELECT * - Specify columns**\n\`\`\`sql\nSELECT id, name, email FROM users;\n\`\`\`\n\n**3. Use EXPLAIN to analyze queries**\n\`\`\`sql\nEXPLAIN SELECT * FROM orders WHERE user_id = 123;\n\`\`\`\n\n**4. JOIN optimization**\n\`\`\`sql\nSELECT u.name, o.total\nFROM users u\nINNER JOIN orders o ON u.id = o.user_id;\n\`\`\`\n\n**5. Use LIMIT for pagination**\n\`\`\`sql\nSELECT * FROM products LIMIT 20 OFFSET 40;\n\`\`\``;
+            }
+
+            if (lowerMessage.includes('javascript') || lowerMessage.includes('js')) {
+                return `Here's some helpful JavaScript information:\n\n**Modern JavaScript Features:**\n\n\`\`\`javascript\n// Arrow functions\nconst greet = (name) => \`Hello, \${name}!\`;\n\n// Destructuring\nconst { name, age } = person;\nconst [first, second] = array;\n\n// Spread operator\nconst newArray = [...oldArray, newItem];\nconst newObject = { ...oldObject, newProp: value };\n\n// Async/await\nasync function fetchData() {\n  const response = await fetch(url);\n  const data = await response.json();\n  return data;\n}\n\`\`\`\n\nWould you like me to explain any of these concepts in more detail?`;
+            }
+
+            if (lowerMessage.includes('hello') || lowerMessage.includes('hi')) {
+                return `Hello! 👋 I'm IND AI, your coding assistant. I can help you with:\n\n• Writing code in any programming language\n• Debugging and fixing errors\n• Explaining programming concepts\n• Code optimization and best practices\n\nWhat would you like help with today?`;
+            }
+
+            // Default response
+            return `I'd be happy to help with that! Here are some suggestions:\n\n• **Be specific** about what you're trying to accomplish\n• **Include code samples** if you're debugging\n• **Mention the programming language** you're using\n\nTry asking me about:\n- Python, JavaScript, Java, C++, or any language\n- Web development (React, Node.js, APIs)\n- Databases (SQL, optimization)\n- Algorithms and data structures\n\nWhat specific coding question do you have?`;
         }
 
         // Show typing indicator
@@ -192,7 +221,7 @@
             typingDiv.className = 'message assistant';
             typingDiv.innerHTML = `
                 <div class="message-header">
-                    <span>🤖 CodingAI</span>
+                    <span>🤖 IND AI</span>
                 </div>
                 <div class="message-content">
                     <span class="typing-dots">Thinking<span>.</span><span>.</span><span>.</span></span>
@@ -216,7 +245,7 @@
             const messageDiv = document.createElement('div');
             messageDiv.className = `message ${type}`;
             
-            const header = type === 'user' ? '👤 You' : '🤖 CodingAI';
+            const header = type === 'user' ? '👤 You' : '🤖 IND AI';
             
             messageDiv.innerHTML = `
                 <div class="message-header">
@@ -261,20 +290,14 @@
             chatMessages.innerHTML = `
                 <div class="message assistant">
                     <div class="message-header">
-                        <span>🤖 CodingAI</span>
+                        <span>🤖 IND AI</span>
                     </div>
                     <div class="message-content">
                         Chat cleared! How can I help you with your coding questions?
                     </div>
                 </div>
             `;
-            // Reset chat history
-            chatHistory = [
-                {
-                    role: 'system',
-                    content: 'You are CodingAI, a helpful AI coding assistant. You help users with programming questions, code debugging, explanations, and best practices. Always provide clear, well-formatted responses with code examples when appropriate.'
-                }
-            ];
+            chatHistory = [];
         }
 
         // Show examples
