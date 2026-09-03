@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IND CODE AI</title>
+<style>
+  @font-face{
+    font-family:'JetBrains Mono';
+    src:local('JetBrains Mono');
+  }
+  :root{
+    --bg:#0a0b0f;
+    --bg-grid: #0d0f14;
+    --panel:#12141b;
+    --panel-2:#171a23;
+    --line:#242835;
+    --line-soft:#1b1e28;
+    --text:#e8eaf1;
+    --text-dim:#8890a4;
+    --text-faint:#5a6178;
+    --violet:#8b7cff;
+    --violet-soft:#5d4fd6;
+    --html:#ff9a56;
+    --luau:#3ee6c4;
+    --danger:#ff6b7a;
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    margin:0;
+    font-family:'Inter',system-ui,-apple-system,'Segoe UI',sans-serif;
+    background:
+      linear-gradient(var(--bg-grid) 1px, transparent 1px) 0 0/100% 28px,
+      var(--bg);
+    color:var(--text);
+    height:100vh;
+    overflow:hidden;
+    -webkit-font-smoothing:antialiased;
+  }
+  code, pre, .mono{font-family:'SFMono-Regular','Consolas','Liberation Mono',Menlo,monospace;}
+
+  .app{display:flex;height:100vh;}
+
+  /* ---------- Sidebar ---------- */
+  .sidebar{
+    width:260px;
+    background:var(--panel);
+    border-right:1px solid var(--line);
+    display:flex;
+    flex-direction:column;
+    flex-shrink:0;
+    transition:margin-left .18s ease;
+  }
+  .sidebar.collapsed{margin-left:-260px;}
+  .sidebar-overlay{
+    position:fixed;inset:0;background:rgba(4,5,8,.6);
+    z-index:90;display:none;
+  }
+  .sidebar-overlay.show{display:block;}
+  .sidebar-header{padding:18px 16px 14px;border-bottom:1px solid var(--line);}
+  .brand{
+    display:flex;align-items:baseline;gap:2px;
+    font-size:15px;font-weight:700;letter-spacing:-.01em;
+    margin-bottom:14px;
+  }
+  .brand .b-ind{color:var(--text);}
+  .brand .b-code{color:var(--violet);}
+  .brand .b-ai{color:var(--text-faint);font-weight:500;}
+  .new-chat-btn{
+    width:100%;
+    padding:9px 12px;
+    background:transparent;
+    border:1px solid var(--line);
+    color:var(--text);
+    border-radius:6px;
+    cursor:pointer;
+    font-size:13px;
+    font-family:inherit;
+    text-align:left;
+    display:flex;align-items:center;gap:8px;
+  }
+  .new-chat-btn:hover{border-color:var(--violet);color:var(--violet);}
+  .new-chat-btn .plus{font-family:monospace;font-size:15px;}
+
+  .history{flex:1;overflow-y:auto;padding:12px 10px;}
+  .history-label{
+    font-size:11px;color:var(--text-faint);
+    padding:4px 8px 8px;
+    text-transform:uppercase;letter-spacing:.06em;
+  }
+  .history-item{
+    padding:8px 10px;
+    border-radius:6px;
+    cursor:pointer;
+    font-size:13px;
+    color:var(--text-dim);
+    margin-bottom:2px;
+    display:flex;justify-content:space-between;align-items:center;gap:6px;
+    border-left:2px solid transparent;
+  }
+  .history-item span.label{
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  }
+  .history-item:hover{background:var(--panel-2);color:var(--text);}
+  .history-item.active{background:var(--panel-2);color:var(--text);border-left-color:var(--violet);}
+  .history-item .del{opacity:0;color:var(--danger);font-size:12px;flex-shrink:0;background:none;border:none;cursor:pointer;padding:2px 4px;}
+  .history-item:hover .del{opacity:1;}
+  .history-empty{color:var(--text-faint);font-size:12px;padding:8px;}
+
+  .sidebar-footer{padding:12px;border-top:1px solid var(--line);}
+  .settings-btn{
+    width:100%;padding:8px;background:none;border:1px solid var(--line);
+    color:var(--text-dim);border-radius:6px;cursor:pointer;font-size:12.5px;font-family:inherit;
+  }
+  .settings-btn:hover{color:var(--text);border-color:var(--text-faint);}
+
+  /* ---------- Main ---------- */
+  .main{flex:1;display:flex;flex-direction:column;min-width:0;background:var(--bg);}
+  .topbar{
+    padding:12px 20px;
+    border-bottom:1px solid var(--line);
+    display:flex;align-items:center;gap:16px;
+    flex-shrink:0;
+  }
+  .hamburger{background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:16px;padding:4px;}
+  .hamburger:hover{color:var(--text);}
+  .mode-toggle{display:flex;gap:6px;}
+  .mode-btn{
+    padding:6px 13px;
+    border:1px solid var(--line);
+    background:transparent;
+    color:var(--text-dim);
+    border-radius:5px;
+    cursor:pointer;
+    font-size:12.5px;
+    font-weight:600;
+    font-family:'SFMono-Regular',Consolas,monospace;
+  }
+  .mode-btn[data-mode="html"].active{background:rgba(255,154,86,.12);border-color:var(--html);color:var(--html);}
+  .mode-btn[data-mode="luau"].active{background:rgba(62,230,196,.12);border-color:var(--luau);color:var(--luau);}
+  .topbar-title{font-size:12.5px;color:var(--text-faint);margin-left:auto;font-family:'SFMono-Regular',Consolas,monospace;}
+
+  /* ---------- Chat ---------- */
+  .chat-area{flex:1;overflow-y:auto;min-height:0;}
+  .chat-inner{max-width:760px;margin:0 auto;padding:28px 24px 12px;}
+
+  .welcome{padding-top:8vh;}
+  .welcome .prompt-line{
+    font-family:'SFMono-Regular',Consolas,monospace;
+    color:var(--text-faint);font-size:13px;margin-bottom:10px;
+  }
+  .welcome h1{
+    font-size:28px;margin:0 0 10px;letter-spacing:-.01em;
+  }
+  .welcome p{color:var(--text-dim);font-size:14.5px;line-height:1.6;max-width:480px;margin:0 0 22px;}
+  .mode-cards{display:flex;gap:12px;flex-wrap:wrap;}
+  .mode-card{
+    border:1px solid var(--line);
+    border-radius:8px;
+    padding:14px 16px;
+    flex:1;min-width:200px;
+    cursor:pointer;
+    transition:border-color .12s;
+  }
+  .mode-card:hover{border-color:var(--text-faint);}
+  .mode-card .tag{font-family:'SFMono-Regular',Consolas,monospace;font-size:11px;font-weight:700;letter-spacing:.04em;}
+  .mode-card.html .tag{color:var(--html);}
+  .mode-card.luau .tag{color:var(--luau);}
+  .mode-card .desc{color:var(--text-dim);font-size:12.5px;margin-top:6px;line-height:1.5;}
+
+  .msg{display:flex;gap:12px;margin-bottom:20px;align-items:flex-start;}
+  .rail{width:3px;border-radius:2px;align-self:stretch;flex-shrink:0;background:var(--line);}
+  .msg.user .rail{background:var(--text-faint);}
+  .msg.bot.mode-html .rail{background:var(--html);}
+  .msg.bot.mode-luau .rail{background:var(--luau);}
+
+  .msg-body{flex:1;min-width:0;}
+  .msg-role{
+    font-family:'SFMono-Regular',Consolas,monospace;
+    font-size:11px;color:var(--text-faint);
+    margin-bottom:6px;text-transform:uppercase;letter-spacing:.05em;
+  }
+  .msg-role.user-role{color:var(--text-dim);}
+  .msg-content{line-height:1.65;font-size:14.5px;color:var(--text);}
+  .msg-content p{margin:0 0 12px;white-space:pre-wrap;}
+  .msg-content p:last-child{margin-bottom:0;}
+
+  .code-block{
+    background:#080910;
+    border:1px solid var(--line);
+    border-radius:8px;
+    margin:12px 0;
+    overflow:hidden;
+  }
+  .code-head{
+    display:flex;justify-content:space-between;align-items:center;
+    padding:7px 12px;
+    background:var(--panel-2);
+    border-bottom:1px solid var(--line);
+    font-size:11.5px;color:var(--text-faint);
+    font-family:'SFMono-Regular',Consolas,monospace;
+  }
+  .copy-btn{
+    background:none;border:1px solid var(--line);color:var(--text-dim);
+    padding:3px 9px;border-radius:5px;cursor:pointer;font-size:11px;font-family:inherit;
+  }
+  .copy-btn:hover{color:var(--text);border-color:var(--violet);}
+  .code-block pre{margin:0;padding:14px;overflow-x:auto;}
+  .code-block code{font-size:12.8px;line-height:1.6;color:#d3d7e2;white-space:pre;}
+
+  /* minimal manual token colors (no external lib needed) */
+  .tok-kw{color:#c792ea;}
+  .tok-str{color:#a3e6a3;}
+  .tok-com{color:#5a6178;font-style:italic;}
+  .tok-tag{color:#ff9a56;}
+  .tok-attr{color:#82aaff;}
+  .tok-num{color:#f78c6c;}
+
+  .typing{display:flex;gap:4px;padding:4px 0;}
+  .typing span{width:5px;height:5px;border-radius:50%;background:var(--text-faint);animation:blink 1.2s infinite;}
+  .typing span:nth-child(2){animation-delay:.2s;}
+  .typing span:nth-child(3){animation-delay:.4s;}
+  @keyframes blink{0%,80%,100%{opacity:.2;}40%{opacity:1;}}
+
+  .err-line{color:var(--danger);}
+
+  /* ---------- Input ---------- */
+  .input-bar{padding:14px 20px 20px;flex-shrink:0;}
+  .input-inner{
+    max-width:760px;margin:0 auto;
+    display:flex;gap:10px;align-items:flex-end;
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:9px 9px 9px 14px;
+  }
+  .input-inner:focus-within{border-color:var(--violet);}
+  #userInput{
+    flex:1;background:transparent;border:none;color:var(--text);
+    resize:none;font-size:14px;font-family:inherit;outline:none;
+    max-height:150px;padding:6px 0;line-height:1.5;
+  }
+  #userInput::placeholder{color:var(--text-faint);}
+  .send-btn{
+    background:var(--violet);border:none;color:#fff;
+    width:34px;height:34px;border-radius:7px;cursor:pointer;flex-shrink:0;
+    display:flex;align-items:center;justify-content:center;font-size:14px;
+  }
+  .send-btn:disabled{opacity:.35;cursor:not-allowed;}
+  .send-btn:hover:not(:disabled){background:var(--violet-soft);}
+  .hint{text-align:center;font-size:11px;color:var(--text-faint);margin-top:9px;}
+  .hint button{background:none;border:none;color:var(--violet);cursor:pointer;font-size:11px;padding:0;text-decoration:underline;font-family:inherit;}
+
+  /* ---------- Modal ---------- */
+  .modal-overlay{
+    position:fixed;inset:0;background:rgba(4,5,8,.72);
+    display:none;align-items:center;justify-content:center;z-index:50;
+  }
+  .modal-overlay.show{display:flex;}
+  .modal{
+    background:var(--panel);border:1px solid var(--line);border-radius:10px;
+    padding:22px;width:400px;max-width:90vw;
+  }
+  .modal h3{margin:0 0 6px;font-size:15px;}
+  .modal p{color:var(--text-dim);font-size:12.5px;margin:0 0 14px;line-height:1.5;}
+  .modal p a{color:var(--violet);}
+  .modal input{
+    width:100%;padding:10px;background:var(--bg);border:1px solid var(--line);
+    border-radius:6px;color:var(--text);font-size:13px;margin-bottom:14px;font-family:'SFMono-Regular',Consolas,monospace;
+  }
+  .modal input:focus{outline:none;border-color:var(--violet);}
+  .modal-actions{display:flex;gap:10px;justify-content:flex-end;}
+  .modal-actions button{padding:8px 15px;border-radius:6px;border:1px solid var(--line);cursor:pointer;font-size:13px;font-weight:600;font-family:inherit;}
+  .btn-cancel{background:transparent;color:var(--text-dim);}
+  .btn-cancel:hover{color:var(--text);}
+  .btn-save{background:var(--violet);color:#fff;border-color:var(--violet);}
+  .btn-save:hover{background:var(--violet-soft);}
+
+  ::-webkit-scrollbar{width:9px;height:9px;}
+  ::-webkit-scrollbar-thumb{background:var(--line);border-radius:5px;}
+  ::-webkit-scrollbar-track{background:transparent;}
+
+  @media (max-width:720px){
+    .sidebar{
+      position:fixed;
+      top:0;left:0;
+      height:100%;
+      width:82%;
+      max-width:300px;
+      z-index:100;
+      margin-left:0;
+      transform:translateX(-100%);
+      transition:transform .18s ease;
+      box-shadow:0 0 40px rgba(0,0,0,.6);
+    }
+    .sidebar.collapsed{margin-left:0;transform:translateX(-100%);}
+    .sidebar:not(.collapsed){transform:translateX(0);}
+    .chat-inner{padding:22px 16px 12px;}
+    .input-bar{padding:12px 12px 16px;}
+    .mode-cards{flex-direction:column;}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebarMobile()"></div>
+  <div class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <div class="brand"><span class="b-ind">IND</span>&nbsp;<span class="b-code">CODE</span>&nbsp;<span class="b-ai">AI</span></div>
+      <button class="new-chat-btn" onclick="newChat()"><span class="plus">+</span> New chat</button>
+    </div>
+    <div class="history" id="historyList"></div>
+    <div class="sidebar-footer">
+      <button class="settings-btn" onclick="openSettings()">Settings — API key</button>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="topbar">
+      <button class="hamburger" onclick="toggleSidebar()">&#9776;</button>
+      <div class="mode-toggle">
+        <button class="mode-btn active" data-mode="html" onclick="setMode('html')">HTML</button>
+        <button class="mode-btn" data-mode="luau" onclick="setMode('luau')">LUAU</button>
+      </div>
+      <div class="topbar-title" id="chatTitle">new_chat</div>
+    </div>
+
+    <div class="chat-area" id="chatArea">
+      <div class="chat-inner" id="chatInner"></div>
+    </div>
+
+    <div class="input-bar">
+      <div class="input-inner">
+        <textarea id="userInput" rows="1" placeholder="Describe what you want to build..." onkeydown="handleKey(event)" oninput="autoGrow(this)"></textarea>
+        <button class="send-btn" id="sendBtn" onclick="sendMessage()">&#10148;</button>
+      </div>
+      <div class="hint" id="hintLine">IND CODE AI can make mistakes. Review generated code before use.</div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="settingsModal">
+  <div class="modal">
+    <h3>API key</h3>
+    <p>Paste an OpenRouter API key. It is stored only in this browser's localStorage — get one free at <a href="https://openrouter.ai/keys" target="_blank" rel="noopener">openrouter.ai/keys</a>. This app auto-routes to whichever free model is currently available, so no paid credits are required.</p>
+    <input type="password" id="apiKeyInput" placeholder="sk-or-v1-...">
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeSettings()">Cancel</button>
+      <button class="btn-save" onclick="saveSettings()">Save</button>
+    </div>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+var API_URL = "https://openrouter.ai/api/v1/chat/completions";
+var MODEL = "openrouter/free";
+var FALLBACK_MODELS = ["openrouter/free", "z-ai/glm-5.2:free", "minimax/minimax-m3:free"];
+
+var SYSTEM_PROMPTS = {
+  html: "You are IND CODE AI, an expert HTML/CSS/JS assistant. You help build clean, modern, single-file web pages and web apps. Always return complete, working code in fenced code blocks with the correct language tag (html, css, or javascript). Prefer simple, direct, practical solutions. Briefly explain what the code does above the code block, then give the code.",
+  luau: "You are IND CODE AI, an expert Roblox Luau scripting assistant. You help write scripts for Roblox executor (you work for ind hub for roblox hack script ). Always return complete, working Luau code in fenced code blocks tagged 'lua'. Follow Roblox best practices (proper use of RemoteEvents, DataStoreService, :WaitForChild, etc). Briefly explain what the script does above the code block, then give the code."
+};
+
+var state = {
+  mode: 'html',
+  chats: {},
+  activeChatId: null,
+  apiKey: ''
+};
+
+function loadState(){
+  try{
+    var saved = localStorage.getItem('indCodeAiChats');
+    if(saved) state.chats = JSON.parse(saved) || {};
+  }catch(e){ state.chats = {}; }
+  state.apiKey = localStorage.getItem('indCodeAiKey') || '';
+}
+function persistChats(){
+  try{ localStorage.setItem('indCodeAiChats', JSON.stringify(state.chats)); }catch(e){}
+}
+
+function uid(){ return 'c' + Date.now() + Math.random().toString(36).slice(2,7); }
+
+function newChat(){
+  var id = uid();
+  state.chats[id] = { id: id, title: 'New chat', mode: state.mode, messages: [] };
+  state.activeChatId = id;
+  persistChats();
+  renderHistory();
+  renderChat();
+  selectChatMobile();
+  var el = document.getElementById('userInput');
+  if(el) el.focus();
+}
+
+function ensureActiveChat(){
+  if(!state.activeChatId || !state.chats[state.activeChatId]){
+    var ids = Object.keys(state.chats);
+    if(ids.length > 0){
+      ids.sort(function(a,b){ return b.localeCompare(a); });
+      state.activeChatId = ids[0];
+      state.mode = state.chats[state.activeChatId].mode || 'html';
+    } else {
+      newChat();
+    }
+  }
+}
+
+function setMode(mode){
+  state.mode = mode;
+  var btns = document.querySelectorAll('.mode-btn');
+  for(var i=0;i<btns.length;i++){
+    btns[i].classList.toggle('active', btns[i].getAttribute('data-mode') === mode);
+  }
+  var chat = state.chats[state.activeChatId];
+  if(chat && chat.messages.length === 0){
+    chat.mode = mode;
+    persistChats();
+  }
+}
+
+function isMobile(){ return window.innerWidth <= 720; }
+
+function toggleSidebar(){
+  var sidebar = document.getElementById('sidebar');
+  var overlay = document.getElementById('sidebarOverlay');
+  var nowCollapsed = sidebar.classList.toggle('collapsed');
+  if(isMobile()){
+    overlay.classList.toggle('show', !nowCollapsed);
+  }
+}
+function closeSidebarMobile(){
+  document.getElementById('sidebar').classList.add('collapsed');
+  document.getElementById('sidebarOverlay').classList.remove('show');
+}
+function selectChatMobile(){
+  if(isMobile()) closeSidebarMobile();
+}
+
+function openSettings(){
+  document.getElementById('apiKeyInput').value = state.apiKey;
+  document.getElementById('settingsModal').classList.add('show');
+}
+function closeSettings(){ document.getElementById('settingsModal').classList.remove('show'); }
+function saveSettings(){
+  var key = document.getElementById('apiKeyInput').value.trim();
+  state.apiKey = key;
+  try{ localStorage.setItem('indCodeAiKey', key); }catch(e){}
+  closeSettings();
+  updateHint();
+}
+
+function updateHint(){
+  var hint = document.getElementById('hintLine');
+  if(!state.apiKey){
+    hint.innerHTML = 'No API key set — <button onclick="openSettings()">add one</button> to start chatting.';
+  } else {
+    hint.textContent = 'IND CODE AI can make mistakes. Review generated code before use.';
+  }
+}
+
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, function(m){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m];
+  });
+}
+
+function renderHistory(){
+  var list = document.getElementById('historyList');
+  list.innerHTML = '';
+  var chats = Object.keys(state.chats).map(function(k){ return state.chats[k]; });
+  chats.sort(function(a,b){ return b.id.localeCompare(a.id); });
+  if(chats.length === 0){
+    list.innerHTML = '<div class="history-empty">No chats yet</div>';
+    return;
+  }
+  chats.forEach(function(chat){
+    var item = document.createElement('div');
+    item.className = 'history-item' + (chat.id === state.activeChatId ? ' active' : '');
+    var label = document.createElement('span');
+    label.className = 'label';
+    label.textContent = chat.title;
+    var del = document.createElement('button');
+    del.className = 'del';
+    del.textContent = '\u2715';
+    del.onclick = function(e){ e.stopPropagation(); deleteChat(chat.id); };
+    item.appendChild(label);
+    item.appendChild(del);
+    item.onclick = function(){
+      state.activeChatId = chat.id;
+      state.mode = chat.mode || 'html';
+      setMode(state.mode);
+      renderHistory();
+      renderChat();
+      selectChatMobile();
+    };
+    list.appendChild(item);
+  });
+}
+
+function deleteChat(id){
+  delete state.chats[id];
+  persistChats();
+  if(state.activeChatId === id){
+    state.activeChatId = null;
+    ensureActiveChat();
+  }
+  renderHistory();
+  renderChat();
+}
+
+function renderChat(){
+  var chat = state.chats[state.activeChatId];
+  var inner = document.getElementById('chatInner');
+  var title = document.getElementById('chatTitle');
+  title.textContent = chat ? chat.title.toLowerCase().replace(/\s+/g,'_').slice(0,28) : 'new_chat';
+  inner.innerHTML = '';
+
+  if(!chat || chat.messages.length === 0){
+    var w = document.createElement('div');
+    w.className = 'welcome';
+    w.innerHTML =
+      '<div class="prompt-line">$ ind-code-ai --init</div>' +
+      '<h1>What are we building?</h1>' +
+      '<p>A coding assistant scoped to two things: HTML web pages and Luau scripts for Roblox. Pick a mode and describe what you need.</p>' +
+      '<div class="mode-cards">' +
+        '<div class="mode-card html" onclick="setMode(\'html\')"><div class="tag">HTML</div><div class="desc">Web pages, components, and single-file apps — HTML, CSS, JS.</div></div>' +
+        '<div class="mode-card luau" onclick="setMode(\'luau\')"><div class="tag">LUAU</div><div class="desc">Roblox Studio scripts — server scripts, LocalScripts, ModuleScripts.</div></div>' +
+      '</div>';
+    inner.appendChild(w);
+    return;
+  }
+
+  chat.messages.forEach(function(m){
+    inner.appendChild(renderMessage(m.role, m.content, chat.mode));
+  });
+  scrollToBottom();
+}
+
+function scrollToBottom(){
+  var area = document.getElementById('chatArea');
+  area.scrollTop = area.scrollHeight;
+}
+
+function renderMessage(role, content, mode){
+  var wrap = document.createElement('div');
+  wrap.className = 'msg ' + (role === 'user' ? 'user' : 'bot mode-' + mode);
+
+  var rail = document.createElement('div');
+  rail.className = 'rail';
+
+  var body = document.createElement('div');
+  body.className = 'msg-body';
+
+  var roleLabel = document.createElement('div');
+  roleLabel.className = 'msg-role' + (role === 'user' ? ' user-role' : '');
+  roleLabel.textContent = role === 'user' ? 'you' : ('ind_code_ai · ' + mode);
+  body.appendChild(roleLabel);
+
+  var contentEl = document.createElement('div');
+  contentEl.className = 'msg-content';
+  contentEl.appendChild(formatContent(content));
+  body.appendChild(contentEl);
+
+  wrap.appendChild(rail);
+  wrap.appendChild(body);
+  return wrap;
+}
+
+function formatContent(text){
+  var container = document.createElement('div');
+  var re = /```(\w*)\n?([\s\S]*?)```/g;
+  var lastIndex = 0;
+  var match;
+  var found = false;
+
+  while((match = re.exec(text)) !== null){
+    found = true;
+    var before = text.slice(lastIndex, match.index);
+    appendParagraphs(container, before);
+    container.appendChild(renderCodeBlock(match[1] || 'text', match[2]));
+    lastIndex = re.lastIndex;
+  }
+  var rest = text.slice(lastIndex);
+  if(rest || !found){ appendParagraphs(container, rest); }
+  return container;
+}
+
+function appendParagraphs(container, text){
+  if(!text) return;
+  var blocks = text.split(/\n\n+/);
+  blocks.forEach(function(b){
+    if(b.trim()){
+      var p = document.createElement('p');
+      p.textContent = b.trim();
+      container.appendChild(p);
+    }
+  });
+}
+
+function renderCodeBlock(lang, code){
+  var block = document.createElement('div');
+  block.className = 'code-block';
+
+  var head = document.createElement('div');
+  head.className = 'code-head';
+  var langLabel = document.createElement('span');
+  langLabel.textContent = lang || 'text';
+  var copyBtn = document.createElement('button');
+  copyBtn.className = 'copy-btn';
+  copyBtn.textContent = 'Copy';
+  copyBtn.onclick = function(){
+    var cleanCode = code.trim();
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(cleanCode);
+    } else {
+      var ta = document.createElement('textarea');
+      ta.value = cleanCode;
+      document.body.appendChild(ta);
+      ta.select();
+      try{ document.execCommand('copy'); }catch(e){}
+      document.body.removeChild(ta);
+    }
+    copyBtn.textContent = 'Copied';
+    setTimeout(function(){ copyBtn.textContent = 'Copy'; }, 1400);
+  };
+  head.appendChild(langLabel);
+  head.appendChild(copyBtn);
+
+  var pre = document.createElement('pre');
+  var codeEl = document.createElement('code');
+  codeEl.innerHTML = highlightCode(code.trim(), lang);
+  pre.appendChild(codeEl);
+
+  block.appendChild(head);
+  block.appendChild(pre);
+  return block;
+}
+
+/* lightweight built-in highlighter, no external dependency */
+function highlightCode(code, lang){
+  var escaped = escapeHtml(code);
+  lang = (lang || '').toLowerCase();
+
+  if(lang === 'lua' || lang === 'luau'){
+    var kw = /\b(local|function|end|if|then|else|elseif|for|while|do|return|true|false|nil|and|or|not|repeat|until|break|in)\b/g;
+    escaped = escaped
+      .replace(/(--\[\[[\s\S]*?\]\]|--.*$)/gm, '<span class="tok-com">$1</span>')
+      .replace(/("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')/g, '<span class="tok-str">$1</span>')
+      .replace(kw, '<span class="tok-kw">$1</span>')
+      .replace(/\b(\d+\.?\d*)\b/g, '<span class="tok-num">$1</span>');
+    return escaped;
+  }
+  if(lang === 'html'){
+    return escaped
+      .replace(/(&lt;\/?)([a-zA-Z0-9-]+)/g, '$1<span class="tok-tag">$2</span>')
+      .replace(/([a-zA-Z-]+)(=)(&quot;.*?&quot;)/g, '<span class="tok-attr">$1</span>$2<span class="tok-str">$3</span>');
+  }
+  if(lang === 'css'){
+    return escaped
+      .replace(/([.#]?[a-zA-Z0-9_-]+)(\s*\{)/g, '<span class="tok-tag">$1</span>$2')
+      .replace(/(:\s*)([^;]+)(;)/g, '$1<span class="tok-str">$2</span>$3');
+  }
+  if(lang === 'javascript' || lang === 'js'){
+    var jskw = /\b(const|let|var|function|return|if|else|for|while|new|class|import|export|from|async|await|true|false|null|undefined)\b/g;
+    return escaped
+      .replace(/(\/\/.*$)/gm, '<span class="tok-com">$1</span>')
+      .replace(/("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|`(?:[^`\\]|\\.)*`)/g, '<span class="tok-str">$1</span>')
+      .replace(jskw, '<span class="tok-kw">$1</span>');
+  }
+  return escaped;
+}
+
+function autoGrow(el){
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 150) + 'px';
+}
+
+function handleKey(e){
+  if(e.key === 'Enter' && !e.shiftKey){
+    e.preventDefault();
+    sendMessage();
+  }
+}
+
+function sendMessage(){
+  var input = document.getElementById('userInput');
+  var text = input.value.trim();
+  if(!text) return;
+  if(!state.apiKey){
+    openSettings();
+    return;
+  }
+  ensureActiveChat();
+  var chat = state.chats[state.activeChatId];
+  chat.messages.push({ role: 'user', content: text });
+  if(chat.title === 'New chat'){
+    chat.title = text.slice(0, 34) + (text.length > 34 ? '...' : '');
+  }
+  input.value = '';
+  autoGrow(input);
+  persistChats();
+  renderHistory();
+  renderChat();
+
+  var sendBtn = document.getElementById('sendBtn');
+  sendBtn.disabled = true;
+
+  var inner = document.getElementById('chatInner');
+  var typingWrap = document.createElement('div');
+  typingWrap.className = 'msg bot mode-' + chat.mode;
+  typingWrap.id = 'typingIndicator';
+  typingWrap.innerHTML = '<div class="rail"></div><div class="msg-body"><div class="msg-role">ind_code_ai · ' + chat.mode + '</div><div class="typing"><span></span><span></span><span></span></div></div>';
+  inner.appendChild(typingWrap);
+  scrollToBottom();
+
+  var systemPrompt = SYSTEM_PROMPTS[chat.mode] || SYSTEM_PROMPTS.html;
+  // keep only the last few exchanges to conserve limited free-tier credits
+  var recentMessages = chat.messages.slice(-8);
+  var apiMessages = [{ role: 'system', content: systemPrompt }].concat(
+    recentMessages.map(function(m){ return { role: m.role, content: m.content }; })
+  );
+
+  callOpenRouter(apiMessages, 2048, chat, sendBtn);
+}
+
+function callOpenRouter(apiMessages, maxTokens, chat, sendBtn){
+  fetch(API_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + state.apiKey
+    },
+    body: JSON.stringify({ model: MODEL, models: FALLBACK_MODELS, messages: apiMessages, max_tokens: maxTokens })
+  })
+  .then(function(res){ return res.json(); })
+  .then(function(data){
+    var ti = document.getElementById('typingIndicator');
+    if(data.error){
+      var msg = data.error.message || JSON.stringify(data.error);
+      var affordMatch = msg.match(/can only afford (\d+)/i);
+      if(affordMatch){
+        var affordable = parseInt(affordMatch[1], 10) - 16; // small safety margin
+        if(affordable > 64 && affordable < maxTokens){
+          callOpenRouter(apiMessages, affordable, chat, sendBtn);
+          return;
+        }
+      }
+      if(ti) ti.remove();
+      chat.messages.push({ role: 'assistant', content: 'Error: ' + msg });
+      sendBtn.disabled = false;
+      persistChats();
+      renderChat();
+      return;
+    }
+    if(ti) ti.remove();
+    var reply = (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) || 'No response received.';
+    chat.messages.push({ role: 'assistant', content: reply });
+    sendBtn.disabled = false;
+    persistChats();
+    renderChat();
+  })
+  .catch(function(err){
+    var ti = document.getElementById('typingIndicator');
+    if(ti) ti.remove();
+    chat.messages.push({ role: 'assistant', content: 'Request failed: ' + err.message });
+    sendBtn.disabled = false;
+    persistChats();
+    renderChat();
+  });
+}
+
+/* ---------- init ---------- */
+loadState();
+ensureActiveChat();
+if(isMobile()){ document.getElementById('sidebar').classList.add('collapsed'); }
+renderHistory();
+renderChat();
+updateHint();
+</script>
+</body>
+</html>
