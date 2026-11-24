@@ -907,7 +907,7 @@ function verifyFullStackWebsiteQuality(
       file: htmlBlock.fileName,
       language: 'html',
       severity: 'error',
-      message: \`Found \${placeholderLinks.length} placeholder href="#" link(s). Replace each with a real section target or a button with a working handler.\`,
+      message: 'Found ' + placeholderLinks.length + ' placeholder href="#" link(s). Replace each with a real section target or a button with a working handler.',
     });
   }
 
@@ -921,7 +921,7 @@ function verifyFullStackWebsiteQuality(
       file: htmlBlock.fileName,
       language: 'html',
       severity: 'error',
-      message: \`Navigation points to missing section ID(s): \${[...missingAnchorTargets].join(', ')}. Add the matching IDs or correct the links.\`,
+      message: 'Navigation points to missing section IDs: ' + [...missingAnchorTargets].join(', ') + '. Add the matching IDs or correct the links.',
     });
   }
 
