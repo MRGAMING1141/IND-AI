@@ -1,5 +1,5 @@
 import type { Request, Response } from 'express';
-import app from '../../../../../server.ts';
+import app from '../../../../server.ts';
 
 // Explicit Vercel entry point for GET /api/agent/chat/jobs/:jobId.
 export default function handler(req: Request, res: Response): void {
