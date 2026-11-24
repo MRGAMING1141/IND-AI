@@ -380,7 +380,7 @@ export function analyzePromptDeeply(input: {
       'ONLY a dedicated copyable ```prompt:<Title> text prompt block (with optional 2-3 brief usage tips outside) — STRICTLY DO NOT build a website or output HTML/CSS/JS code';
   } else if (intentCategory === 'followup_edit') {
     const fileLabel = input.followUpEdit.previousFileNames[0] || 'index.html';
-    targetOutputFormat = `Complete updated ${fileLabel} preserving all existing working code + 1-2 line root-cause/change summary`;
+    targetOutputFormat = `Minimal applyable patch to ${fileLabel}: change only the affected code; preserve all unrelated lines + 1-2 line root-cause/change summary. Include the full file only if explicitly requested or required for a live artifact preview.`;
   } else if (intentCategory === 'website_artifact') {
     targetOutputFormat = input.codingIntent.wantsBackend
       ? 'Self-contained ```html:index.html interactive artifact + runnable backend server.js & package.json'
