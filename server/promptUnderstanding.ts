@@ -346,7 +346,20 @@ export function analyzePromptDeeply(input: {
     );
 
   let complexity: PromptComplexity = 'standard';
-  if (isTrivialGreeting || (intentCategory === 'explain_or_qa' && wordCount <= 12 && mustInclude.length === 0)) {
+  const isSmallCodeTask =
+    (intentCategory === 'code_build' || intentCategory === 'bug_fix') &&
+    wordCount <= 10 &&
+    mustInclude.length === 0 &&
+    mustAvoid.length === 0 &&
+    !hasAttachments &&
+    !input.followUpEdit.isFollowUpEdit &&
+    !isHinglishOrMultilingual;
+
+  if (
+    isTrivialGreeting ||
+    (intentCategory === 'explain_or_qa' && wordCount <= 12 && mustInclude.length === 0) ||
+    isSmallCodeTask
+  ) {
     complexity = 'quick';
   } else if (
     intentCategory === 'website_artifact' ||
@@ -422,6 +435,7 @@ export function analyzePromptDeeply(input: {
     (input.historyCount ?? 0) > 0 &&
     /\b(it|this|that|them|those|same|above|previous|iske|isko|ye|yeh|woh|wo|usko)\b/i.test(raw);
   const needsAiRefinement =
+    complexity !== 'quick' &&
     !isTrivialGreeting &&
     raw.length >= 6 &&
     (complexity === 'complex' ||
