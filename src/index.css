@@ -175,3 +175,58 @@
     transition-duration: 0.01ms !important;
   }
 }
+
+
+/* Mobile viewport and embedded preview sizing fixes */
+html,
+body,
+#root {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+}
+
+body {
+  overflow: hidden;
+}
+
+#root > .h-screen {
+  height: 100vh;
+  height: 100dvh;
+  min-height: 0;
+  max-height: 100dvh;
+}
+
+#root iframe[srcdoc] {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  flex: 1 1 auto;
+  border: 0;
+  background: #fff;
+}
+
+@media (max-width: 767px) {
+  #root > .h-screen {
+    height: 100dvh;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  #root > .h-screen > div.flex {
+    min-height: 0;
+    height: 100%;
+  }
+
+  #root > .h-screen main {
+    min-height: 0;
+    height: 0;
+    flex: 1 1 0%;
+    overflow: hidden;
+  }
+
+  #root main .bg-gradient-to-t {
+    padding-bottom: calc(1.25rem + env(safe-area-inset-bottom));
+  }
+}
