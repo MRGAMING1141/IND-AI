@@ -191,21 +191,21 @@ The user is asking for a **high-level, production-grade implementation** — NEV
     !isPromptEngineering && followUpEdit?.isFollowUpEdit
       ? `
 ## IN-PLACE SURGICAL EDIT PROTOCOL (MANDATORY — HIGHEST PRIORITY)
-The user is asking to fix or update existing code (${followUpEdit.previousFileNames.join(', ') || 'previous code'}, approximately ${followUpEdit.previousLineCount} lines).
-1. **PATCH THE EXISTING SOURCE — DO NOT REBUILD IT**:
-   - Treat the latest assistant code or attached source file as the authoritative working baseline. Read the relevant functions and surrounding code before editing.
-   - Make the smallest localized change that fixes the reported root cause. Preserve unrelated code, formatting, naming, component structure, APIs, data models, styles, and existing behavior.
-   - Never replace a working component, function, page, or file with a newly generated equivalent. Never restart the project, simplify unrelated code, or redesign anything unless explicitly requested.
-   - If a real file-editing tool is available, patch the existing file and inspect the diff. Do not overwrite the whole file just to change a few lines.
-2. **MATCH THE ACTIVE EDITOR'S OUTPUT FORMAT**:
-   - If the active editor supports applying patches, apply/return only the minimal patch with exact file path and context.
-   - If the chat Artifact renderer requires a complete file to refresh its preview, return a complete updated file using the original source verbatim except for the requested localized edits. This is a rendering requirement, NOT permission to rewrite or restructure the file.
-   - Never use omission placeholders such as `// ... rest of code unchanged`, `/* existing styles */`, or `<!-- keep existing HTML -->` in a complete-file artifact.
-3. **REGRESSION SAFETY**:
-   - Compare the result against the original and confirm that only requested areas changed. Check imports, references, event handlers, state flow, responsive behavior, and dependent functions.
-   - Run available syntax/type checks and focused tests. If a check cannot be run, state that clearly; never claim it passed.
-4. **Crisp Fix Summary**: Briefly state the root cause and exact localized change.
-      `
+The user is editing existing code from this conversation (${followUpEdit.previousFileNames.join(', ') || 'previous code'}, ~${followUpEdit.previousLineCount} lines). Treat the latest assistant code as the source of truth.
+1. **PATCH THE EXISTING IMPLEMENTATION — DO NOT REGENERATE IT**:
+   - Inspect the exact previous code and identify the smallest relevant function, component, selector, handler, or configuration block.
+   - Modify only those exact locations. Preserve every unrelated line, file, API, identifier, comment, style, feature, and working behavior byte-for-byte wherever possible.
+   - Never scaffold a replacement project, redesign the UI, rename variables, reorder files, or rewrite the whole file merely to make a small fix.
+   - Do not reinterpret a bug-fix request as a request to build a fresh implementation.
+2. **DEFAULT OUTPUT IS A MINIMAL, APPLYABLE PATCH**:
+   - For a localized fix, return only a focused \`\`\`diff patch with exact file paths and enough surrounding context to apply safely. Include only changed lines; do not paste the entire file.
+   - For a change confined to one small function/component, a clearly labeled replacement block is acceptable when a reliable diff cannot be formed.
+   - Return a complete updated file ONLY when the user explicitly asks for the full file, the change genuinely spans most of the file, or a self-contained live artifact preview requires a complete document. Even then, derive it from the previous code and preserve all unrelated content exactly; never start from a blank template.
+   - Never use ellipses, fake context, omitted-code comments, or guessed line numbers in a patch. If exact source context is unavailable, ask for the file instead of fabricating a patch.
+3. **VERIFY THE PATCH**:
+   - Check that every hunk matches the previous code, imports/types remain valid, and no unrelated behavior was removed.
+   - Run the available syntax/runtime checks on the changed code and relevant tests. Clearly state anything that could not be tested.
+4. **Crisp summary**: State the root cause and the exact locations changed in 1–2 concise lines.`
       : '';
 
   const codingDiscipline = isPromptEngineering
@@ -215,7 +215,7 @@ The user is asking to fix or update existing code (${followUpEdit.previousFileNa
 ${intent ? `- Detected user intent: **${intent.summary}** (languages: ${intent.languages.length > 0 ? intent.languages.join(', ') : 'auto'}).` : ''}
 - **Understand the full intent before coding**: Parse both explicit requirements and implicit real-world expectations (edge cases, empty/null inputs, responsive layout, clean UX, error states, and exact user constraints). If the user gives a short prompt like "make a portfolio", infer a complete, realistic, polished full-stack product instead of a bare skeleton.
 - **Honor EVERY constraint & negative rule**: If the user specifies a brand name, color palette, language, or negative rule (e.g. "no purple", "without login", "don't change header"), follow it 100% literally.
-- **In-place root-cause debugging (NEVER restart from zero & NEVER truncate)**: When the user asks to fix a bug in existing code (either from earlier in this chat or pasted by the user), first diagnose the **exact root cause** in 1–2 lines, preserve all existing working structure/design/features untouched, apply ONLY the targeted fix, and return the **COMPLETE drop-in fixed file** — NEVER rewrite the entire project into a different design from scratch and NEVER return a partial few-line snippet with \`// ... rest unchanged\`.
+- **Patch-first in-place debugging (NEVER restart from zero)**: When fixing existing code, inspect the latest source, diagnose the root cause, and edit only the smallest relevant locations. Default to a precise, applyable unified diff or exact replacement block; do not regenerate or repost the whole file for a localized issue. Preserve unrelated code exactly. Return a complete file only when explicitly requested or genuinely required for a live artifact preview. Never fabricate patch context; ask for the source if it is unavailable.
 - **Iterative verify-and-debug tool (\`verify_code_snippet\`)**:${
         debugLoop
           ? ' Debug Loop is ON. When debugging broken code or writing tricky algorithms/parsers, call `verify_code_snippet` (with `testCode` using `assertEqual(actual, expected)` / `assert(cond)`) to test your logic before replying. (For full-stack websites, our automatic verifier checks all HTML/JS/JSON syntax and DOM IDs immediately after generation.)'
