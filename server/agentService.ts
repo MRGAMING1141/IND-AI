@@ -482,12 +482,15 @@ async function generateStreamWithFallback(
           ? (options.thinkingLevelOverride ??
             (options.isHyper
               ? ThinkingLevel.HIGH
-              : options.complexity === 'complex' || options.preferPrimaryCoding
+              : options.complexity === 'complex' ||
+                (options.preferPrimaryCoding && options.complexity !== 'quick')
                 ? ThinkingLevel.MEDIUM
                 : ThinkingLevel.LOW))
           : options.isHyper
             ? ThinkingLevel.HIGH
-            : options.isLargeGeneration || options.preferPrimaryCoding || options.complexity === 'complex'
+            : options.isLargeGeneration ||
+                (options.preferPrimaryCoding && options.complexity !== 'quick') ||
+                options.complexity === 'complex'
               ? ThinkingLevel.MEDIUM
               : ThinkingLevel.LOW;
 
