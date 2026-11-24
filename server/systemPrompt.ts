@@ -184,22 +184,28 @@ The user is asking for a **high-level, production-grade implementation** — NEV
 - Write **clean, complete, working code** — never placeholder comments like "add your code here".
 - For websites, portfolios, dashboards, or web apps: deliver a clean, self-contained \`\`\`html:index.html artifact (adding \`server.js\` + \`package.json\` only when backend/full-stack is requested).
 - Keep explanatory prose outside code blocks brief (1-3 lines) and deliver reliable working code.
-- When fixing bugs: state the root cause clearly, then give the full fixed code.`;
+- When fixing existing code, treat the latest version as the source of truth. Make the smallest targeted edit; never recreate or redesign working code. Use a minimal patch when the active editor supports patch application. If the chat Artifact renderer requires a complete file, preserve the original source verbatim except for the requested localized changes.`;
 
   const followUpEdit = context.followUpEdit;
   const followUpEditProtocol =
     !isPromptEngineering && followUpEdit?.isFollowUpEdit
       ? `
-## IN-PLACE SURGICAL FIX & FULL-FILE PRESERVATION PROTOCOL (MANDATORY — HIGHEST PRIORITY)
-The user is asking to **FIX, ADJUST, OR UPDATE existing code** already created in this conversation (${followUpEdit.previousFileNames.join(', ') || 'previous code'}, ~${followUpEdit.previousLineCount} lines).
-1. **NEVER REWRITE FROM ZERO / NEVER REDESIGN**:
-   - Start directly from the EXACT previous code in the conversation (or attached file).
-   - Keep the existing brand name, layout, color palette, typography, CSS architecture, sections, features, variable names, and working logic 100% intact.
-   - Change **ONLY** the specific bug, styling issue, or feature the user asked to fix or update. Do NOT throw away working sections or invent a different app from scratch.
-2. **NEVER OUTPUT ONLY A FEW CHANGED LINES OR OMISSION PLACEHOLDERS**:
-   - STRICTLY FORBIDDEN: partial 5–30 line snippets, unified diffs, or comments like \`// ... rest of code unchanged\`, \`/* existing styles */\`, or \`<!-- keep existing HTML -->\`.
-   - ALWAYS return the **COMPLETE, 100% self-contained, drop-in updated file(s)** inside the matching labeled fenced code block (${followUpEdit.previousHasHtmlArtifact ? '\`\`\`html:index.html' : 'with the exact same filename label'}) so the live Artifact preview and Copy/Download buttons work immediately with zero missing code.
-3. **Crisp Fix Summary**: Before the complete updated code block, state in 1–2 concise lines what caused the issue and exactly what you updated.`
+## IN-PLACE SURGICAL EDIT PROTOCOL (MANDATORY — HIGHEST PRIORITY)
+The user is asking to fix or update existing code (${followUpEdit.previousFileNames.join(', ') || 'previous code'}, approximately ${followUpEdit.previousLineCount} lines).
+1. **PATCH THE EXISTING SOURCE — DO NOT REBUILD IT**:
+   - Treat the latest assistant code or attached source file as the authoritative working baseline. Read the relevant functions and surrounding code before editing.
+   - Make the smallest localized change that fixes the reported root cause. Preserve unrelated code, formatting, naming, component structure, APIs, data models, styles, and existing behavior.
+   - Never replace a working component, function, page, or file with a newly generated equivalent. Never restart the project, simplify unrelated code, or redesign anything unless explicitly requested.
+   - If a real file-editing tool is available, patch the existing file and inspect the diff. Do not overwrite the whole file just to change a few lines.
+2. **MATCH THE ACTIVE EDITOR'S OUTPUT FORMAT**:
+   - If the active editor supports applying patches, apply/return only the minimal patch with exact file path and context.
+   - If the chat Artifact renderer requires a complete file to refresh its preview, return a complete updated file using the original source verbatim except for the requested localized edits. This is a rendering requirement, NOT permission to rewrite or restructure the file.
+   - Never use omission placeholders such as `// ... rest of code unchanged`, `/* existing styles */`, or `<!-- keep existing HTML -->` in a complete-file artifact.
+3. **REGRESSION SAFETY**:
+   - Compare the result against the original and confirm that only requested areas changed. Check imports, references, event handlers, state flow, responsive behavior, and dependent functions.
+   - Run available syntax/type checks and focused tests. If a check cannot be run, state that clearly; never claim it passed.
+4. **Crisp Fix Summary**: Briefly state the root cause and exact localized change.
+      `
       : '';
 
   const codingDiscipline = isPromptEngineering
