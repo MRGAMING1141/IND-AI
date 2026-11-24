@@ -925,6 +925,22 @@ function verifyFullStackWebsiteQuality(
     });
   }
 
+
+  for (const pat of WEBSITE_STUB_PATTERNS) {
+    if (pat.re.test(html)) {
+      issues.push({
+        file: htmlBlock.fileName,
+        language: 'html',
+        severity: 'error',
+        message: pat.message,
+      });
+    }
+  }
+
+  // Disallow blocking browser alert()/confirm()/prompt() inside <script>
+  const scriptMatches = html.match(/<script\b[^>]*>([\s\S]*?)<\/script>/gi) ?? [];
+  const allScripts = scriptMatches.join('\n');
+
   // If ARIA tabs are used, require valid panel wiring and a real visibility/state implementation.
   if (/role\s*=\s*["']tablist["']/i.test(html)) {
     const tabButtons = [...html.matchAll(/<[^>]+role\s*=\s*["']tab["'][^>]*>/gi)].map((m) => m[0]);
@@ -950,20 +966,6 @@ function verifyFullStackWebsiteQuality(
     }
   }
 
-  for (const pat of WEBSITE_STUB_PATTERNS) {
-    if (pat.re.test(html)) {
-      issues.push({
-        file: htmlBlock.fileName,
-        language: 'html',
-        severity: 'error',
-        message: pat.message,
-      });
-    }
-  }
-
-  // Disallow blocking browser alert()/confirm()/prompt() inside <script>
-  const scriptMatches = html.match(/<script\b[^>]*>([\s\S]*?)<\/script>/gi) ?? [];
-  const allScripts = scriptMatches.join('\n');
   if (/(?:^|[^\w$.])(?:window\.)?(?:alert|confirm|prompt)\s*\(/.test(allScripts)) {
     issues.push({
       file: htmlBlock.fileName,
