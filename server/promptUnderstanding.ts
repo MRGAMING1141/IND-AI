@@ -351,7 +351,7 @@ export function analyzePromptDeeply(input: {
     wordCount <= 10 &&
     mustInclude.length === 0 &&
     mustAvoid.length === 0 &&
-    !hasAttachments &&
+    !(Array.isArray(input.attachments) && input.attachments.length > 0) &&
     !input.followUpEdit.isFollowUpEdit &&
     !isHinglishOrMultilingual;
 
