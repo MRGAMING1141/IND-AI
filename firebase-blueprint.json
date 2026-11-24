@@ -1,0 +1,332 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "User Profile",
+      "description": "Private user account profile storing plan tier, expiry, rolling 5-hour usage window, and identity metadata.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "maxLength": 254
+        },
+        "displayName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "photoURL": {
+          "type": "string",
+          "maxLength": 512
+        },
+        "plan": {
+          "type": "string",
+          "enum": ["free", "plus"]
+        },
+        "planExpiresAt": {
+          "type": "integer",
+          "description": "Epoch milliseconds when the IND AGENT Plus pass expires (0 if inactive)."
+        },
+        "customInstructions": {
+          "type": "string",
+          "maxLength": 1500
+        },
+        "customInstructionsEnabled": {
+          "type": "boolean"
+        },
+        "usageWindowStart": {
+          "type": "integer",
+          "description": "Epoch milliseconds when the active 5-hour rolling usage window started (0 if inactive)."
+        },
+        "usageWindowCount": {
+          "type": "integer",
+          "description": "Message count consumed during the active 5-hour rolling usage window (0-10000)."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["uid", "email", "displayName", "plan", "createdAt", "updatedAt"]
+    },
+    "BillingSettingsDoc": {
+      "title": "Billing Settings",
+      "description": "Owner-configured FamPay / UPI payment destination for IND AGENT Plus upgrades.",
+      "type": "object",
+      "properties": {
+        "upiId": {
+          "type": "string",
+          "minLength": 5,
+          "maxLength": 98,
+          "pattern": "^[a-zA-Z0-9._\\-]{2,64}@[a-zA-Z0-9]{2,32}$"
+        },
+        "payeeName": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 60
+        },
+        "priceInr": {
+          "type": "integer",
+          "description": "Monthly IND AGENT Plus price in INR (200)."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["upiId", "payeeName", "priceInr", "updatedAt"]
+    },
+    "PaymentRequestDoc": {
+      "title": "Payment Request",
+      "description": "User-submitted UPI / FamPay UTR verification request for IND AGENT Plus (₹200 / 30 days).",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "userId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "userEmail": {
+          "type": "string",
+          "format": "email",
+          "maxLength": 254
+        },
+        "userName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "plan": {
+          "type": "string",
+          "enum": ["plus"]
+        },
+        "amountInr": {
+          "type": "integer",
+          "description": "Exact verified amount in INR (200)."
+        },
+        "utr": {
+          "type": "string",
+          "minLength": 10,
+          "maxLength": 24,
+          "pattern": "^[a-zA-Z0-9]{10,24}$"
+        },
+        "payerUpi": {
+          "type": "string",
+          "maxLength": 98
+        },
+        "status": {
+          "type": "string",
+          "enum": ["pending", "approved", "rejected"]
+        },
+        "adminNote": {
+          "type": "string",
+          "maxLength": 240
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "userEmail",
+        "userName",
+        "plan",
+        "amountInr",
+        "utr",
+        "status",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "ChatSessionDoc": {
+      "title": "Chat Session",
+      "description": "Per-user synced chat conversation with bounded recent messages.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "ownerId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 140
+        },
+        "mode": {
+          "type": "string",
+          "enum": ["auto", "coding", "business"]
+        },
+        "messages": {
+          "type": "array",
+          "description": "Bounded array (max 100 messages) of sanitized message maps."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["id", "ownerId", "title", "mode", "messages", "createdAt", "updatedAt"]
+    },
+    "MemoryFactDoc": {
+      "title": "Memory Fact",
+      "description": "Per-user persistent chat memory item.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "ownerId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "content": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 240
+        },
+        "category": {
+          "type": "string",
+          "enum": ["preference", "project", "context"]
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["id", "ownerId", "content", "category", "createdAt"]
+    },
+    "UserSkillDoc": {
+      "title": "User Skill",
+      "description": "Per-user custom slash-command Skill template.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "ownerId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "command": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 24,
+          "pattern": "^/[a-z][a-z0-9_-]{1,22}$"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 60
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 180
+        },
+        "mode": {
+          "type": "string",
+          "enum": ["auto", "coding", "business"]
+        },
+        "instructions": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2000
+        },
+        "placeholder": {
+          "type": "string",
+          "maxLength": 160
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "ownerId",
+        "command",
+        "name",
+        "description",
+        "mode",
+        "instructions",
+        "createdAt",
+        "updatedAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "Private user account document (PII restricted to owner & owner-admin for plan activation)."
+    },
+    "/settings/{settingId}": {
+      "schema": { "$ref": "#/entities/BillingSettingsDoc" },
+      "description": "Publicly readable billing destination doc (/settings/billing), writable strictly by owner-admin."
+    },
+    "/paymentRequests/{requestId}": {
+      "schema": { "$ref": "#/entities/PaymentRequestDoc" },
+      "description": "User-submitted UPI / FamPay UTR verification requests; readable by submitter and owner-admin, approvable strictly by owner-admin."
+    },
+    "/users/{userId}/sessions/{sessionId}": {
+      "schema": { "$ref": "#/entities/ChatSessionDoc" },
+      "description": "User-owned synced chat sessions (up to 100 messages)."
+    },
+    "/users/{userId}/memories/{memoryId}": {
+      "schema": { "$ref": "#/entities/MemoryFactDoc" },
+      "description": "User-owned persistent chat memory facts."
+    },
+    "/users/{userId}/skills/{skillId}": {
+      "schema": { "$ref": "#/entities/UserSkillDoc" },
+      "description": "User-owned custom slash-command Skills."
+    }
+  }
+}

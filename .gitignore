@@ -1,0 +1,35 @@
+# Dependencies & build artifacts
+node_modules/
+build/
+dist/
+coverage/
+server.js
+
+# Environment files & API keys (never commit secrets)
+.env
+.env.*
+!.env.example
+*.local
+
+# Private keys, certificates & cloud service accounts
+*.pem
+*.key
+*.p12
+*.pfx
+*service-account*.json
+*firebase-adminsdk*.json
+secrets/
+
+# Local test artifacts & browser automation caches
+.playwright-cli/
+playwright-report/
+test-results/
+tmp/
+
+# OS & editor files
+.DS_Store
+Thumbs.db
+*.log
+npm-debug.log*
+.vscode/
+.idea/

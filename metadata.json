@@ -1,0 +1,8 @@
+{
+  "name": "IND AGENT",
+  "description": "Multi-user AI coding and business operations workspace with per-user Google Drive and Gmail integrations, Free & Plus plans, and preview-first approvals.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

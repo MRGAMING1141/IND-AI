@@ -1,0 +1,320 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global default-deny safety net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // ---- Hardened Global Primitives ----
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedUser() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isVerifiedOwner(userId) {
+      return isVerifiedUser() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isVerifiedUser() && request.auth.token.email == 'ffonlypro@gmail.com';
+    }
+
+    function hasParentUser(userId) {
+      return exists(/databases/$(database)/documents/users/$(userId));
+    }
+
+    // ---- Validation Blueprints (Anti-Update-Gap) ----
+    function isValidUserProfile(data, userId) {
+      return data.keys().hasAll(['uid', 'email', 'displayName', 'plan', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly([
+          'uid',
+          'email',
+          'displayName',
+          'photoURL',
+          'plan',
+          'planExpiresAt',
+          'customInstructions',
+          'customInstructionsEnabled',
+          'usageWindowStart',
+          'usageWindowCount',
+          'createdAt',
+          'updatedAt'
+        ])
+        && data.uid is string && data.uid == userId && isValidId(data.uid)
+        && data.email is string && data.email.size() >= 3 && data.email.size() <= 254
+        && data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 120
+        && (!('photoURL' in data) || (data.photoURL is string && data.photoURL.size() <= 512))
+        && (!('planExpiresAt' in data) || (data.planExpiresAt is int && data.planExpiresAt >= 0 && data.planExpiresAt <= 9999999999999))
+        && (!('customInstructions' in data) || (data.customInstructions is string && data.customInstructions.size() <= 1500))
+        && (!('customInstructionsEnabled' in data) || data.customInstructionsEnabled is bool)
+        && (!('usageWindowStart' in data) || (data.usageWindowStart is int && data.usageWindowStart >= 0 && data.usageWindowStart <= 9999999999999))
+        && (!('usageWindowCount' in data) || (data.usageWindowCount is int && data.usageWindowCount >= 0 && data.usageWindowCount <= 10000))
+        && data.plan in ['free', 'plus']
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    // Prevents client from resetting or downgrading usageWindowCount during an active 5-hour window (5m clock-skew grace)
+    function isValidUsageWindowTransition() {
+      return 'usageWindowStart' in incoming()
+        && 'usageWindowCount' in incoming()
+        && (
+          !('usageWindowStart' in existing())
+          || existing().usageWindowStart == 0
+          || request.time.toMillis() >= existing().usageWindowStart + 17700000
+          || (
+            incoming().usageWindowStart == existing().usageWindowStart
+            && incoming().usageWindowCount >= existing().usageWindowCount
+          )
+        );
+    }
+
+    function isValidBillingSettings(data) {
+      return data.keys().hasAll(['upiId', 'payeeName', 'priceInr', 'updatedAt'])
+        && data.keys().hasOnly(['upiId', 'payeeName', 'priceInr', 'updatedAt'])
+        && data.upiId is string && data.upiId.size() >= 5 && data.upiId.size() <= 98
+        && data.upiId.matches('^[a-zA-Z0-9._\\-]{2,64}@[a-zA-Z0-9]{2,32}$')
+        && data.payeeName is string && data.payeeName.size() >= 2 && data.payeeName.size() <= 60
+        && data.priceInr is int && data.priceInr == 200
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidPaymentRequest(data, requestId) {
+      return data.keys().hasAll(['id', 'userId', 'userEmail', 'userName', 'plan', 'amountInr', 'utr', 'status', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['id', 'userId', 'userEmail', 'userName', 'plan', 'amountInr', 'utr', 'payerUpi', 'status', 'adminNote', 'createdAt', 'updatedAt'])
+        && data.id is string && data.id == requestId && isValidId(data.id)
+        && data.userId is string && isValidId(data.userId)
+        && data.userEmail is string && data.userEmail.size() >= 3 && data.userEmail.size() <= 254
+        && data.userName is string && data.userName.size() >= 1 && data.userName.size() <= 120
+        && data.plan == 'plus'
+        && data.amountInr is int && data.amountInr == 200
+        && data.utr is string && data.utr.size() >= 10 && data.utr.size() <= 24 && data.utr.matches('^[a-zA-Z0-9]{10,24}$')
+        && (!('payerUpi' in data) || (data.payerUpi is string && data.payerUpi.size() <= 98))
+        && (!('adminNote' in data) || (data.adminNote is string && data.adminNote.size() <= 240))
+        && data.status in ['pending', 'approved', 'rejected']
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidChatSession(data, userId, sessionId) {
+      return data.keys().hasAll(['id', 'ownerId', 'title', 'mode', 'messages', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['id', 'ownerId', 'title', 'mode', 'messages', 'createdAt', 'updatedAt'])
+        && data.id is string && data.id == sessionId && isValidId(data.id)
+        && data.ownerId is string && data.ownerId == userId && isValidId(data.ownerId)
+        && data.title is string && data.title.size() >= 1 && data.title.size() <= 140
+        && data.mode in ['auto', 'coding', 'business']
+        && data.messages is list && data.messages.size() <= 100
+        && (data.messages.size() == 0 || data.messages[0] is map)
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidMemoryFact(data, userId, memoryId) {
+      return data.keys().hasAll(['id', 'ownerId', 'content', 'category', 'createdAt'])
+        && data.keys().hasOnly(['id', 'ownerId', 'content', 'category', 'createdAt'])
+        && data.id is string && data.id == memoryId && isValidId(data.id)
+        && data.ownerId is string && data.ownerId == userId && isValidId(data.ownerId)
+        && data.content is string && data.content.size() >= 1 && data.content.size() <= 240
+        && data.category in ['preference', 'project', 'context']
+        && data.createdAt is timestamp;
+    }
+
+    function isValidUserSkill(data, userId, skillId) {
+      return data.keys().hasAll(['id', 'ownerId', 'command', 'name', 'description', 'mode', 'instructions', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['id', 'ownerId', 'command', 'name', 'description', 'mode', 'instructions', 'placeholder', 'createdAt', 'updatedAt'])
+        && data.id is string && data.id == skillId && isValidId(data.id)
+        && data.ownerId is string && data.ownerId == userId && isValidId(data.ownerId)
+        && data.command is string && data.command.size() >= 2 && data.command.size() <= 24 && data.command.matches('^/[a-z][a-z0-9_\\-]{1,22}$')
+        && data.name is string && data.name.size() >= 1 && data.name.size() <= 60
+        && data.description is string && data.description.size() >= 1 && data.description.size() <= 180
+        && data.mode in ['auto', 'coding', 'business']
+        && data.instructions is string && data.instructions.size() >= 1 && data.instructions.size() <= 2000
+        && (!('placeholder' in data) || (data.placeholder is string && data.placeholder.size() <= 160))
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    // ---- /settings/{settingId} (Owner-Managed FamPay UPI Billing Config) ----
+    match /settings/{settingId} {
+      allow get: if settingId == 'billing';
+      allow list: if false;
+
+      allow create: if isAdmin()
+        && settingId == 'billing'
+        && isValidBillingSettings(incoming())
+        && incoming().updatedAt == request.time;
+
+      allow update: if isAdmin()
+        && settingId == 'billing'
+        && isValidBillingSettings(incoming())
+        && incoming().updatedAt == request.time;
+
+      allow delete: if false;
+    }
+
+    // ---- /paymentRequests/{requestId} (UPI / FamPay UTR Verification Queue) ----
+    match /paymentRequests/{requestId} {
+      allow get: if isValidId(requestId)
+        && (isAdmin() || (isVerifiedUser() && existing().userId == request.auth.uid));
+
+      allow list: if isAdmin()
+        || (isVerifiedUser() && resource.data.userId == request.auth.uid);
+
+      allow create: if isVerifiedUser()
+        && isValidId(requestId)
+        && isValidPaymentRequest(incoming(), requestId)
+        && incoming().userId == request.auth.uid
+        && incoming().status == 'pending'
+        && (!('adminNote' in incoming()) || incoming().adminNote == '')
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time
+        && hasParentUser(request.auth.uid);
+
+      allow update: if isAdmin()
+        && isValidId(requestId)
+        && isValidPaymentRequest(incoming(), requestId)
+        && existing().status == 'pending'
+        && incoming().status in ['approved', 'rejected']
+        && incoming().id == existing().id
+        && incoming().userId == existing().userId
+        && incoming().userEmail == existing().userEmail
+        && incoming().userName == existing().userName
+        && incoming().plan == existing().plan
+        && incoming().amountInr == existing().amountInr
+        && incoming().utr == existing().utr
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'adminNote', 'updatedAt']);
+
+      allow delete: if false;
+    }
+
+    // ---- /users/{userId} (Strict PII Isolation + Admin Plan Activation) ----
+    match /users/{userId} {
+      allow get: if isValidId(userId) && (isVerifiedOwner(userId) || isAdmin());
+      allow list: if false;
+
+      allow create: if isVerifiedOwner(userId)
+        && isValidId(userId)
+        && isValidUserProfile(incoming(), userId)
+        && (incoming().plan == 'free' || isAdmin())
+        && (!('planExpiresAt' in incoming()) || incoming().planExpiresAt == 0 || isAdmin())
+        && (!('usageWindowStart' in incoming()) || incoming().usageWindowStart == 0)
+        && (!('usageWindowCount' in incoming()) || incoming().usageWindowCount == 0)
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+
+      allow update: if isValidId(userId)
+        && isValidUserProfile(incoming(), userId)
+        && incoming().uid == existing().uid
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          // Action 1: Owner profile & Custom Instructions update (cannot alter plan or expiry)
+          (
+            isVerifiedOwner(userId)
+            && incoming().plan == existing().plan
+            && incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'photoURL', 'email', 'customInstructions', 'customInstructionsEnabled', 'updatedAt'])
+          )
+          ||
+          // Action 2: Owner 5-Hour Rolling Usage Window persistence (cannot alter plan or downgrade count)
+          (
+            isVerifiedOwner(userId)
+            && incoming().plan == existing().plan
+            && isValidUsageWindowTransition()
+            && incoming().diff(existing()).affectedKeys().hasOnly(['usageWindowStart', 'usageWindowCount', 'updatedAt'])
+          )
+          ||
+          // Action 3: Owner-Admin Plus Plan Activation / Expiry Update
+          (
+            isAdmin()
+            && incoming().diff(existing()).affectedKeys().hasOnly(['plan', 'planExpiresAt', 'updatedAt'])
+          )
+        );
+
+      allow delete: if false;
+
+      // ---- /users/{userId}/sessions/{sessionId} ----
+      match /sessions/{sessionId} {
+        allow get: if isVerifiedOwner(userId) && isValidId(userId) && isValidId(sessionId);
+        allow list: if isVerifiedOwner(userId) && resource.data.ownerId == request.auth.uid;
+
+        allow create: if isVerifiedOwner(userId)
+          && isValidId(userId) && isValidId(sessionId)
+          && isValidChatSession(incoming(), userId, sessionId)
+          && incoming().createdAt == request.time
+          && incoming().updatedAt == request.time
+          && hasParentUser(userId);
+
+        allow update: if isVerifiedOwner(userId)
+          && isValidId(userId) && isValidId(sessionId)
+          && isValidChatSession(incoming(), userId, sessionId)
+          && incoming().id == existing().id
+          && incoming().ownerId == existing().ownerId
+          && incoming().createdAt == existing().createdAt
+          && incoming().updatedAt == request.time
+          && incoming().diff(existing()).affectedKeys().hasOnly(['title', 'mode', 'messages', 'updatedAt'])
+          && hasParentUser(userId);
+
+        allow delete: if isVerifiedOwner(userId) && isValidId(userId) && isValidId(sessionId) && hasParentUser(userId);
+      }
+
+      // ---- /users/{userId}/memories/{memoryId} ----
+      match /memories/{memoryId} {
+        allow get: if isVerifiedOwner(userId) && isValidId(userId) && isValidId(memoryId);
+        allow list: if isVerifiedOwner(userId) && resource.data.ownerId == request.auth.uid;
+
+        allow create: if isVerifiedOwner(userId)
+          && isValidId(userId) && isValidId(memoryId)
+          && isValidMemoryFact(incoming(), userId, memoryId)
+          && incoming().createdAt == request.time
+          && hasParentUser(userId);
+
+        allow update: if false;
+
+        allow delete: if isVerifiedOwner(userId) && isValidId(userId) && isValidId(memoryId) && hasParentUser(userId);
+      }
+
+      // ---- /users/{userId}/skills/{skillId} ----
+      match /skills/{skillId} {
+        allow get: if isVerifiedOwner(userId) && isValidId(userId) && isValidId(skillId);
+        allow list: if isVerifiedOwner(userId) && resource.data.ownerId == request.auth.uid;
+
+        allow create: if isVerifiedOwner(userId)
+          && isValidId(userId) && isValidId(skillId)
+          && isValidUserSkill(incoming(), userId, skillId)
+          && incoming().createdAt == request.time
+          && incoming().updatedAt == request.time
+          && hasParentUser(userId);
+
+        allow update: if isVerifiedOwner(userId)
+          && isValidId(userId) && isValidId(skillId)
+          && isValidUserSkill(incoming(), userId, skillId)
+          && incoming().id == existing().id
+          && incoming().ownerId == existing().ownerId
+          && incoming().createdAt == existing().createdAt
+          && incoming().updatedAt == request.time
+          && incoming().diff(existing()).affectedKeys().hasOnly(['command', 'name', 'description', 'mode', 'instructions', 'placeholder', 'updatedAt'])
+          && hasParentUser(userId);
+
+        allow delete: if isVerifiedOwner(userId) && isValidId(userId) && isValidId(skillId) && hasParentUser(userId);
+      }
+    }
+  }
+}
