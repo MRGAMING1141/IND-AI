@@ -1318,7 +1318,13 @@ async function startServer(): Promise<void> {
   httpServer.headersTimeout = 80_000;
 }
 
-startServer().catch((err) => {
-  console.error('Failed to start IND AGENT server:', err);
-  process.exit(1);
-});
+// Export the Express app for Vercel's serverless API entry point.
+export default app;
+
+// Run the standalone HTTP server only outside Vercel.
+if (process.env.VERCEL !== '1') {
+  startServer().catch((err) => {
+    console.error('Failed to start IND AGENT server:', err);
+    process.exit(1);
+  });
+}
