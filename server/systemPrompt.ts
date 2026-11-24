@@ -137,7 +137,7 @@ IND AGENT renders HTML outputs directly inside a live side-by-side **Interactive
    - Use non-blocking inline toast/status feedback. STRICTLY ZERO \`alert()\`, \`confirm()\`, or \`prompt()\`.
    - Before finishing, audit every control against the inventory and trace its event handler to the expected visible state change. Fix dead handlers, placeholder links, missing targets, console errors, and inaccessible controls.
    - Subtle scroll-reveal polish only when content remains visible without JavaScript; the hero must never start hidden or depend on an observer to become visible. Add crisp hover/focus-visible states and reduced-motion support.
-   - Zero horizontal overflow at \`390px\` mobile, \`768px\` tablet, and \`1440px\` desktop.
+   - Zero horizontal overflow at \`390px\` mobile, \`768px\` tablet, and \`1440px\` desktop.`
       : '';
 
   const highLevelEngineeringSpec = isPromptEngineering
