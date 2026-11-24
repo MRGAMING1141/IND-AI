@@ -896,6 +896,60 @@ function verifyFullStackWebsiteQuality(
   const html = htmlBlock.code;
   const lineCount = html.split('\n').length;
 
+  // Catch common dead navigation links before an artifact is accepted.
+  const declaredIds = new Set<string>();
+  for (const match of html.matchAll(/\bid\s*=\s*["']([^"']+)["']/gi)) {
+    declaredIds.add(match[1]);
+  }
+  const placeholderLinks = [...html.matchAll(/\bhref\s*=\s*["']#["']/gi)];
+  if (placeholderLinks.length > 0) {
+    issues.push({
+      file: htmlBlock.fileName,
+      language: 'html',
+      severity: 'error',
+      message: \`Found \${placeholderLinks.length} placeholder href="#" link(s). Replace each with a real section target or a button with a working handler.\`,
+    });
+  }
+
+  const missingAnchorTargets = new Set<string>();
+  for (const match of html.matchAll(/\bhref\s*=\s*["']#([^"']+)["']/gi)) {
+    const target = match[1].trim();
+    if (target && !declaredIds.has(target)) missingAnchorTargets.add(target);
+  }
+  if (missingAnchorTargets.size > 0) {
+    issues.push({
+      file: htmlBlock.fileName,
+      language: 'html',
+      severity: 'error',
+      message: \`Navigation points to missing section ID(s): \${[...missingAnchorTargets].join(', ')}. Add the matching IDs or correct the links.\`,
+    });
+  }
+
+  // If ARIA tabs are used, require valid panel wiring and a real visibility/state implementation.
+  if (/role\s*=\s*["']tablist["']/i.test(html)) {
+    const tabButtons = [...html.matchAll(/<[^>]+role\s*=\s*["']tab["'][^>]*>/gi)].map((m) => m[0]);
+    const tabWiringProblems = tabButtons.some((tag) => {
+      const controls = tag.match(/aria-controls\s*=\s*["']([^"']+)["']/i)?.[1];
+      return !controls || !declaredIds.has(controls) || !/aria-selected\s*=\s*["'](true|false)["']/i.test(tag);
+    });
+    if (tabButtons.length === 0 || tabWiringProblems) {
+      issues.push({
+        file: htmlBlock.fileName,
+        language: 'html',
+        severity: 'error',
+        message: 'Tab UI is missing semantic tab buttons, aria-selected state, or matching aria-controls panel IDs. Implement real accessible tab-to-panel wiring.',
+      });
+    }
+    if (!/(classList\.(add|remove|toggle)|\.hidden\s*=|setAttribute\s*\(\s*["']aria-selected|aria-selected)/i.test(allScripts + html)) {
+      issues.push({
+        file: htmlBlock.fileName,
+        language: 'html',
+        severity: 'error',
+        message: 'Tab UI has no detectable panel visibility or active-state update logic. Clicking each tab must switch the visible panel.',
+      });
+    }
+  }
+
   for (const pat of WEBSITE_STUB_PATTERNS) {
     if (pat.re.test(html)) {
       issues.push({
