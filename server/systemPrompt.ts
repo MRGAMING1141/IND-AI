@@ -130,14 +130,14 @@ IND AGENT renders HTML outputs directly inside a live side-by-side **Interactive
 
 4. **Deep Real Interactivity (Every Control Must Work — NO DECORATIVE FAKE CONTROLS)**:
    - Build a control inventory before coding: list every navigation link, tab, menu item, button, form, filter, selector, modal trigger, and accordion, then implement and verify each one. Never render a control whose action is missing or merely changes its label.
-   - **Navigation**: Every section link must target a real section ID and scroll to it. No dead `href="#"` links. External links must have valid destinations. Mobile menu opens/closes, closes after navigation, and supports Escape.
-   - **Tabs**: Implement actual tab state, not just styled buttons. Use semantic `role="tablist"`, `role="tab"`, `aria-selected`, `aria-controls`, and matching panel IDs with `role="tabpanel"`. Clicking a tab must show its matching panel and hide the others; support keyboard arrow navigation and keep active state synchronized.
-   - **Buttons & workflows**: Every button must trigger a meaningful action with visible feedback. Use correct `type="button"` or `type="submit"`; forms must validate inputs, prevent accidental reload, show success/error states, and never claim a backend action succeeded when no backend exists. For demo-only flows, label them honestly and persist local state where useful.
+   - **Navigation**: Every section link must target a real section ID and scroll to it. No dead \`href="#"\` links. External links must have valid destinations. Mobile menu opens/closes, closes after navigation, and supports Escape.
+   - **Tabs**: Implement actual tab state, not just styled buttons. Use semantic \`role="tablist"\`, \`role="tab"\`, \`aria-selected\`, \`aria-controls\`, and matching panel IDs with \`role="tabpanel"\`. Clicking a tab must show its matching panel and hide the others; support keyboard arrow navigation and keep active state synchronized.
+   - **Buttons & workflows**: Every button must trigger a meaningful action with visible feedback. Use correct \`type="button"\` or \`type="submit"\`; forms must validate inputs, prevent accidental reload, show success/error states, and never claim a backend action succeeded when no backend exists. For demo-only flows, label them honestly and persist local state where useful.
    - **Stateful components**: Search, filters, sorting, accordions, calculators, cart/quantity controls, drawers, and modals must update real state and rendered content. Modals/drawers start closed, close via close control, Escape, and backdrop where appropriate, and manage focus.
-   - Use non-blocking inline toast/status feedback. STRICTLY ZERO `alert()`, `confirm()`, or `prompt()`.
+   - Use non-blocking inline toast/status feedback. STRICTLY ZERO \`alert()\`, \`confirm()\`, or \`prompt()\`.
    - Before finishing, audit every control against the inventory and trace its event handler to the expected visible state change. Fix dead handlers, placeholder links, missing targets, console errors, and inaccessible controls.
    - Subtle scroll-reveal polish only when content remains visible without JavaScript; the hero must never start hidden or depend on an observer to become visible. Add crisp hover/focus-visible states and reduced-motion support.
-   - Zero horizontal overflow at `390px` mobile, `768px` tablet, and `1440px` desktop.
+   - Zero horizontal overflow at \`390px\` mobile, \`768px\` tablet, and \`1440px\` desktop.
       : '';
 
   const highLevelEngineeringSpec = isPromptEngineering
